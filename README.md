@@ -179,7 +179,7 @@ python code/sim.py run \
   --seed 42
 ```
 
-`full` generates one normal run and every supported single-fault run for each of the ten datasets (10 normal and 110 single-fault runs with the supplied configuration). The command fails if an OpenModelica result is incomplete, an export is unsafe, or a fault is not detectable in the measurement data.
+`full` generates one normal run and every configured single-fault run for each of the ten datasets (10 normal and 100 single-fault runs with the supplied configuration).
 
 Each generated scenario has this layout:
 

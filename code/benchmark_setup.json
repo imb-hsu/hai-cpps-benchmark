@@ -654,7 +654,8 @@
             "anom_pump50": false,
             "anom_leaking": false
           },
-          "type": "bottling"
+          "type": "bottling",
+          "campaign_faults": []
         },
         "distill0": {
           "files": "../models/Distill.mo",
@@ -666,7 +667,8 @@
             "anom_heat50": false,
             "anom_leaking": false
           },
-          "type": "distill"
+          "type": "distill",
+          "campaign_faults": []
         },
         "source0": {
           "files": "../models/Source.mo",

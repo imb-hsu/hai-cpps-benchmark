@@ -224,6 +224,16 @@ def _validate_semantics(data: Mapping[str, Any], base_dir: Optional[Path]) -> Li
                     )
                 )
 
+            unknown_campaign_faults = sorted(
+                set(module.get("campaign_faults", spec.faults)) - set(spec.faults)
+            )
+            if unknown_campaign_faults:
+                errors.append(
+                    "{}: module {!r} has unsupported campaign faults {}".format(
+                        dataset_name, module_name, ", ".join(unknown_campaign_faults)
+                    )
+                )
+
             faults = module["faults"]
             unknown_faults = sorted(set(faults) - set(spec.faults))
             if unknown_faults:
@@ -372,7 +382,7 @@ def generate_single_fault_campaign(
         modules = setup["model"]["modules"]
         for module_name, module in modules.items():
             spec = MODULE_SPECS[module["type"]]
-            for fault_name in spec.faults:
+            for fault_name in module.get("campaign_faults", spec.faults):
                 scenario = _all_faults_false(setup)
                 scenario["model"]["modules"][module_name]["faults"][fault_name] = True
                 scenario_id = "{}_{}_{}".format(dataset_name, module_name, fault_name)

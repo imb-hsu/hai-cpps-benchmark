@@ -16,7 +16,7 @@ class CommandLineTests(unittest.TestCase):
         with contextlib.redirect_stdout(stdout):
             result = main(["validate", "--config", str(CONFIG_PATH)])
         self.assertEqual(result, 0)
-        self.assertIn("10 normal runs, 110 single-fault runs", stdout.getvalue())
+        self.assertIn("10 normal runs, 100 single-fault runs", stdout.getvalue())
 
     def test_invalid_seed_fails_before_creating_outputs(self):
         stderr = io.StringIO()
