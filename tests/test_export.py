@@ -29,6 +29,9 @@ class ExportTests(unittest.TestCase):
                 "mixer0.fault_window_active": [False, False, True],
                 "mixer0.var_pump_n": [1.0, 1.0, 0.5],
                 "mixer0.state_filling_tank_B201.active": [True, True, False],
+                "mixer0.tank_B201.spill_m_flow": [0.0, 0.0, 0.1],
+                "mixer0.tank_B201.spill_mass": [0.0, 0.0, 0.05],
+                "distill0.distill.spill_volumeFlowRate": [0.0, 0.0, 0.0001],
             }
         )
         with tempfile.TemporaryDirectory() as temporary:
@@ -46,6 +49,12 @@ class ExportTests(unittest.TestCase):
             verification = pd.read_csv(bundle.verification)
 
         self.assertIn("mixer0.tank_B201.level", safe.columns)
+        for column in ("mixer0.tank_B201.spill_m_flow",
+                       "mixer0.tank_B201.spill_mass",
+                       "distill0.distill.spill_volumeFlowRate"):
+            self.assertIn(column, verification.columns)
+            self.assertNotIn(column, safe.columns)
+        self.assertFalse(any("spill" in column for column in oracle.columns))
         self.assertIn(
             "mixer0.sensor_discrete_tank_B201_high.showActive", safe.columns
         )

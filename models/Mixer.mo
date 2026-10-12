@@ -47,13 +47,13 @@ model mixerModule
   Modelica.Fluid.Sources.FixedBoundary anom_sink(redeclare package Medium = Medium, nPorts = 1, p = 1e5) annotation(
     Placement(transformation(origin = {70, -170}, extent = {{-10, -10}, {10, 10}})));
   // tanks
-  Modelica.Fluid.Examples.AST_BatchPlant.BaseClasses.TankWithTopPorts tank_B201(redeclare package Medium = Medium, V0 = 0.0001, crossArea = 0.01431355, height = 0.14, level_start = 0.01, nPorts = 1, nTopPorts = 1, portsData = {Modelica.Fluid.Vessels.BaseClasses.VesselPortsData(diameter = 0.011, height = 0.001, zeta_out = 0, zeta_in = 1)}, stiffCharacteristicForEmptyPort = false, energyDynamics = Modelica.Fluid.Types.Dynamics.FixedInitial, massDynamics = Modelica.Fluid.Types.Dynamics.FixedInitial, p_ambient(displayUnit = "Pa") = 1e5) annotation(
+  SpillTanks.TankWithTopPorts tank_B201(redeclare package Medium = Medium, V0 = 0.0001, crossArea = 0.01431355, height = 0.14, level_start = 0.01, nPorts = 1, nTopPorts = 1, portsData = {Modelica.Fluid.Vessels.BaseClasses.VesselPortsData(diameter = 0.011, height = 0.001, zeta_out = 0, zeta_in = 1)}, stiffCharacteristicForEmptyPort = false, energyDynamics = Modelica.Fluid.Types.Dynamics.FixedInitial, massDynamics = Modelica.Fluid.Types.Dynamics.FixedInitial, p_ambient(displayUnit = "Pa") = 1e5) annotation(
     Placement(transformation(origin = {-150, 10}, extent = {{-20, -20}, {20, 20}})));
-  Modelica.Fluid.Examples.AST_BatchPlant.BaseClasses.TankWithTopPorts tank_B202(redeclare package Medium = Medium, V0 = 0.0001, crossArea = 0.01431355, energyDynamics = Modelica.Fluid.Types.Dynamics.FixedInitial, height = 0.14, level_start = 0.01, massDynamics = Modelica.Fluid.Types.Dynamics.FixedInitial, nPorts = 1, nTopPorts = 1, p_ambient(displayUnit = "Pa") = 1e5, portsData = {Modelica.Fluid.Vessels.BaseClasses.VesselPortsData(diameter = 0.011, height = 0.001, zeta_out = 0, zeta_in = 1)}, stiffCharacteristicForEmptyPort = false) annotation(
+  SpillTanks.TankWithTopPorts tank_B202(redeclare package Medium = Medium, V0 = 0.0001, crossArea = 0.01431355, energyDynamics = Modelica.Fluid.Types.Dynamics.FixedInitial, height = 0.14, level_start = 0.01, massDynamics = Modelica.Fluid.Types.Dynamics.FixedInitial, nPorts = 1, nTopPorts = 1, p_ambient(displayUnit = "Pa") = 1e5, portsData = {Modelica.Fluid.Vessels.BaseClasses.VesselPortsData(diameter = 0.011, height = 0.001, zeta_out = 0, zeta_in = 1)}, stiffCharacteristicForEmptyPort = false) annotation(
     Placement(transformation(origin = {-50, 10}, extent = {{-20, -20}, {20, 20}})));
-  Modelica.Fluid.Examples.AST_BatchPlant.BaseClasses.TankWithTopPorts tank_B203(redeclare package Medium = Medium, V0 = 0.0001, crossArea = 0.01431355, energyDynamics = Modelica.Fluid.Types.Dynamics.FixedInitial, height = 0.14, level_start = 0.01, massDynamics = Modelica.Fluid.Types.Dynamics.FixedInitial, nPorts = 1, nTopPorts = 1, p_ambient(displayUnit = "Pa") = 1e5, portsData = {Modelica.Fluid.Vessels.BaseClasses.VesselPortsData(diameter = 0.011, height = 0.001, zeta_out = 0, zeta_in = 1)}, stiffCharacteristicForEmptyPort = false) annotation(
+  SpillTanks.TankWithTopPorts tank_B203(redeclare package Medium = Medium, V0 = 0.0001, crossArea = 0.01431355, energyDynamics = Modelica.Fluid.Types.Dynamics.FixedInitial, height = 0.14, level_start = 0.01, massDynamics = Modelica.Fluid.Types.Dynamics.FixedInitial, nPorts = 1, nTopPorts = 1, p_ambient(displayUnit = "Pa") = 1e5, portsData = {Modelica.Fluid.Vessels.BaseClasses.VesselPortsData(diameter = 0.011, height = 0.001, zeta_out = 0, zeta_in = 1)}, stiffCharacteristicForEmptyPort = false) annotation(
     Placement(transformation(origin = {50, 10}, extent = {{-20, -20}, {20, 20}})));
-  Modelica.Fluid.Examples.AST_BatchPlant.BaseClasses.TankWithTopPorts tank_B204(redeclare package Medium = Medium, V0 = 0.0001, crossArea = 0.01431355, height = 0.22, level_start = 0.01, nPorts = 1, nTopPorts = 1, portsData = {Modelica.Fluid.Vessels.BaseClasses.VesselPortsData(diameter = 0.011, height = 0.001, zeta_out = 0, zeta_in = 1)}, stiffCharacteristicForEmptyPort = false, energyDynamics = Modelica.Fluid.Types.Dynamics.FixedInitial, massDynamics = Modelica.Fluid.Types.Dynamics.FixedInitial, p_ambient(displayUnit = "Pa") = 1e5) annotation(
+  SpillTanks.TankWithTopPorts tank_B204(redeclare package Medium = Medium, V0 = 0.0001, crossArea = 0.01431355, height = 0.22, level_start = 0.01, nPorts = 1, nTopPorts = 1, portsData = {Modelica.Fluid.Vessels.BaseClasses.VesselPortsData(diameter = 0.011, height = 0.001, zeta_out = 0, zeta_in = 1)}, stiffCharacteristicForEmptyPort = false, energyDynamics = Modelica.Fluid.Types.Dynamics.FixedInitial, massDynamics = Modelica.Fluid.Types.Dynamics.FixedInitial, p_ambient(displayUnit = "Pa") = 1e5) annotation(
     Placement(transformation(origin = {180, 10}, extent = {{-20, -20}, {20, 20}})));
   // pipes
   Modelica.Fluid.Pipes.StaticPipe pipe0(redeclare package Medium = Medium, length = 1, diameter(displayUnit = "mm") = 0.01) annotation(
@@ -212,7 +212,14 @@ model mixerModule
     Placement(transformation(origin = {170, 150}, extent = {{-10, -10}, {10, 10}})));
   Modelica.Fluid.Pipes.StaticPipe pipe7(redeclare package Medium = Medium, diameter(displayUnit = "mm") = 0.01, length = 1, m_flow_start = 0.0005) annotation(
     Placement(transformation(origin = {-110, -130}, extent = {{-10, 10}, {10, -10}})));
+  // Passive tank spills leave the plant independently of the injected leak fault.
+  Modelica.Fluid.Sources.FixedBoundary spill_sink(redeclare package Medium = Medium,
+    nPorts = 4, p = 1e5);
 equation
+  connect(tank_B201.spillPort, spill_sink.ports[1]);
+  connect(tank_B202.spillPort, spill_sink.ports[2]);
+  connect(tank_B203.spillPort, spill_sink.ports[3]);
+  connect(tank_B204.spillPort, spill_sink.ports[4]);
   command_pump_P101_speed = if state_emptying_tank_B201.active or state_emptying_tank_B202.active or state_emptying_tank_B203.active then 150 else 0;
   command_valve_in0_opening = if state_filling_tank_B201.active then 1.0 else closedValveOpening;
   command_valve_in1_opening = if state_filling_tank_B202.active then 1.0 else closedValveOpening;

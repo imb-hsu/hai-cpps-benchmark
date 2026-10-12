@@ -34,7 +34,7 @@ model bottlingModule
   Modelica.Fluid.Sources.FixedBoundary anom_sink(redeclare package Medium = Medium, nPorts = 1, p = 1.0e5) annotation(
     Placement(transformation(origin = {50, -110}, extent = {{10, -10}, {-10, 10}})));
   // tanks
-  Modelica.Fluid.Examples.AST_BatchPlant.BaseClasses.TankWithTopPorts tank_B401(redeclare package Medium = Medium, V0 = 0.0001, crossArea = 0.01431355, height = 0.22, level_start = 0.01, nPorts = 1, nTopPorts = 1, portsData = {Modelica.Fluid.Vessels.BaseClasses.VesselPortsData(diameter = 0.011, height = 0.001, zeta_out = 0, zeta_in = 1)}, stiffCharacteristicForEmptyPort = false, energyDynamics = Modelica.Fluid.Types.Dynamics.FixedInitial, massDynamics = Modelica.Fluid.Types.Dynamics.FixedInitial, p_ambient(displayUnit = "Pa") = 1e5) annotation(
+  SpillTanks.TankWithTopPorts tank_B401(redeclare package Medium = Medium, V0 = 0.0001, crossArea = 0.01431355, height = 0.22, level_start = 0.01, nPorts = 1, nTopPorts = 1, portsData = {Modelica.Fluid.Vessels.BaseClasses.VesselPortsData(diameter = 0.011, height = 0.001, zeta_out = 0, zeta_in = 1)}, stiffCharacteristicForEmptyPort = false, energyDynamics = Modelica.Fluid.Types.Dynamics.FixedInitial, massDynamics = Modelica.Fluid.Types.Dynamics.FixedInitial, p_ambient(displayUnit = "Pa") = 1e5) annotation(
     Placement(transformation(origin = {-90, 20}, extent = {{-20, -20}, {20, 20}})));
   Modelica.Blocks.Math.RealToBoolean level_to_boolean_tank_B401_low(threshold = 0.1*tank_B401.height) annotation(
     Placement(transformation(origin = {-127, 3}, extent = {{-5, -5}, {5, 5}})));
@@ -50,7 +50,7 @@ model bottlingModule
     Placement(transformation(origin = {-107, 17}, extent = {{-5, -5}, {5, 5}})));
   Modelica.Blocks.Interaction.Show.BooleanValue sensor_discrete_tank_B401_high annotation(
     Placement(transformation(origin = {-107, 31}, extent = {{-5, -5}, {5, 5}})));
-  Modelica.Fluid.Examples.AST_BatchPlant.BaseClasses.TankWithTopPorts tank_B402(redeclare package Medium = Medium, V0 = 0.0001, crossArea = 0.01431355, height = 0.22, level_start = 0.01, nPorts = 1, nTopPorts = 1, portsData = {Modelica.Fluid.Vessels.BaseClasses.VesselPortsData(diameter = 0.011, height = 0.001, zeta_out = 0, zeta_in = 1)}, stiffCharacteristicForEmptyPort = false, energyDynamics = Modelica.Fluid.Types.Dynamics.FixedInitial, massDynamics = Modelica.Fluid.Types.Dynamics.FixedInitial, p_ambient(displayUnit = "Pa") = 1e5) annotation(
+  SpillTanks.TankWithTopPorts tank_B402(redeclare package Medium = Medium, V0 = 0.0001, crossArea = 0.01431355, height = 0.22, level_start = 0.01, nPorts = 1, nTopPorts = 1, portsData = {Modelica.Fluid.Vessels.BaseClasses.VesselPortsData(diameter = 0.011, height = 0.001, zeta_out = 0, zeta_in = 1)}, stiffCharacteristicForEmptyPort = false, energyDynamics = Modelica.Fluid.Types.Dynamics.FixedInitial, massDynamics = Modelica.Fluid.Types.Dynamics.FixedInitial, p_ambient(displayUnit = "Pa") = 1e5) annotation(
     Placement(transformation(origin = {90, 20}, extent = {{-20, -20}, {20, 20}})));
   Modelica.Blocks.Sources.RealExpression tank_B402_level(y = tank_B402.level) annotation(
     Placement(transformation(origin = {58, 44}, extent = {{10, -10}, {-10, 10}})));
@@ -127,7 +127,12 @@ model bottlingModule
     Placement(transformation(origin = {112, 170}, extent = {{-10, -10}, {10, 10}})));
   Modelica.StateGraph.TransitionWithSignal condition_is_empty_tank_B402 annotation(
     Placement(transformation(origin = {152, 170}, extent = {{-10, -10}, {10, 10}})));
+  // Passive tank spills leave the plant independently of the injected leak fault.
+  Modelica.Fluid.Sources.FixedBoundary spill_sink(redeclare package Medium = Medium,
+    nPorts = 2, p = 1e5);
 equation
+  connect(tank_B401.spillPort, spill_sink.ports[1]);
+  connect(tank_B402.spillPort, spill_sink.ports[2]);
   command_pump_P401_speed = if state_emptying_tank_B401.active then 150 else 0;
   command_valve_in_opening = if state_filling_tank_B401.active then 1.0 else closedValveOpening;
   command_valve_pump_P401_opening = if state_emptying_tank_B401.active then 1.0 else closedValveOpening;

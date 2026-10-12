@@ -13,6 +13,7 @@ Use `--plan` on the campaign command for a read-only inventory. A campaign can b
 ## Code map
 
 - `models/*.mo`: physical and controller models. Valves in the four built-in process modules use 0.1-second ramps for a full opening or closing. The distillation leak fault additionally has a 10-second onset ramp. Preserve equations and fault behavior unless the task calls for a model change.
+- `models/SpillTanks.mo`: shared MSL-derived tanks, including the evaporator, with passive rim spill ports connected to independent atmospheric sinks. Spills conserve mass, enthalpy, and supported composition; a small hydraulic head above the rim is expected. Preserve controller thresholds and keep spill diagnostics in the private audit.
 - `code/benchmark_setup.json`: canonical ds1–ds10 topology, timing, and fault inventory.
 - `code/config.py` and `code/schemas/benchmark_setup.schema.json`: config normalization, module and port validation, run specifications.
 - `code/model_generation.py` and `code/runner.py`: generated plant and `.mos` files, isolated OpenModelica execution, raw-result checks. Benchmark simulations load MSL 4.0.0.
@@ -25,7 +26,7 @@ Use `--plan` on the campaign command for a read-only inventory. A campaign can b
 ## Working rules
 
 - Keep benchmark scenario counts, seeds, fault windows, and Modelica sources stable when changing launch code. The full plan is 160 healthy plus 190 fault recordings: 10/3/2/1 healthy recordings per topology in train/validation/calibration/test, 95 single faults with persistent and temporal variants, healthy seed allocation starting at 20261005, paired-control and fault seed 42, fault onset 2500, and temporal fault end 7500.
-- `code/actuator_channels.py` pins the four built-in `.mo` files by SHA-256. After an intentional model edit, update those hashes and review command reconstruction, export, and validation assumptions. Check the valve and leak ramp behavior if their equations change.
+- `code/actuator_channels.py` pins the four built-in `.mo` files and `SpillTanks.mo` by SHA-256. After an intentional model edit, update those hashes and review command reconstruction, export, and validation assumptions. Check the valve and leak ramp behavior if their equations change.
 - Campaign source snapshots are created before workers start. Resuming a campaign requires unchanged source and configuration; use fresh output and build roots after either changes. A `--plan` command checks the schedule but does not create a snapshot or start a worker.
 - For a new custom module, declare `type: custom`, `modelica_class`, `input_ports`, `output_ports`, `files`, and empty `faults` in its JSON config. The module must have a replaceable `Medium` package. `code/simulate.py` exports a raw CSV with all Modelica variables.
 - Treat `build/`, `output/`, `.venv/`, cache directories, and `data/` as generated or local artifacts. Do not commit them. Inspect an existing output before replacing it.

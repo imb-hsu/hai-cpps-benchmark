@@ -11,21 +11,26 @@ import pandas as pd
 from export import ExportError, IDENTIFIER_COLUMNS
 
 SCHEMA_VERSION = "2.2.0"
-REGISTRY_VERSION = "1.4.0"
+REGISTRY_VERSION = "1.5.0"
 # These formulas have been reviewed against exactly these model revisions.
 MODEL_HASHES = {
-    "Mixer.mo": "510739bac69448fd72bb0cd0f5949436ba18aadc3e688db3df6d969704a9084f",
-    "Filter.mo": "87238d89d08a691d8ae7709cd735aa870797bdb3edfd2572564e9685f07926d6",
-    "Distill.mo": "f5c5b9cc2ef83b2c0b8b0c0c94ba10e6c101495c75d8c8a0534cbc3fc972ab0c",
-    "Bottling.mo": "b025836e0a9f6db15069a4c5d71ff493a2cbde54a26961a644bf871a180bbb2c",
+    "SpillTanks.mo": "7cc132a46e97a851f419b0796d6d014597caf16c99d8de1f65b5969cc427fe19",
+    "Mixer.mo": "a61f6d39663b8e93fbe4d8a3d5eec5a245deb2148e15964dc6f8c23e49045aaf",
+    "Filter.mo": "af507f93002de1143088fb0ddbc655f91ba22d36c91f69b311c26a82afbcfe30",
+    "Distill.mo": "574da9129e214534421878a7d5a4c784f922fc6de9f37cc788ab1102cadf8089",
+    "Bottling.mo": "0be2147234ee01545cf3a40324b51da5c370f1a44ac3c5012583f8d22e43b964",
 }
 MODELS = Path(__file__).resolve().parents[1] / "models"
 
 
 def verify_sources(setup, recorded_hashes=None):
     result = {}
-    for module in setup["model"]["modules"].values():
-        filename = Path(module["files"]).name
+    modules = setup["model"]["modules"].values()
+    filenames = {Path(module["files"]).name for module in modules}
+    if any(module["type"] in {"mixer", "filter", "distill", "bottling"}
+           for module in modules):
+        filenames.add("SpillTanks.mo")
+    for filename in sorted(filenames):
         path = MODELS / filename
         digest = hashlib.sha256(path.read_bytes()).hexdigest()
         if filename in MODEL_HASHES and digest != MODEL_HASHES[filename]:

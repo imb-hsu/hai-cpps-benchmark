@@ -55,13 +55,13 @@ model distillModule
 
   
   // tanks
-  Modelica.Fluid.Examples.AST_BatchPlant.BaseClasses.TankWithTopPorts tank_B101(redeclare package Medium = Medium, V0 = 0.0001, crossArea = 0.01431355, height = 0.22, level_start = 0.01, nPorts = 1, nTopPorts = 1, portsData = {Modelica.Fluid.Vessels.BaseClasses.VesselPortsData(diameter = 0.011, height = 0.001, zeta_out = 0, zeta_in = 1)}, stiffCharacteristicForEmptyPort = false, energyDynamics = Modelica.Fluid.Types.Dynamics.FixedInitial, massDynamics = Modelica.Fluid.Types.Dynamics.FixedInitial, p_ambient(displayUnit = "Pa") = 1e5) annotation(
+  SpillTanks.TankWithTopPorts tank_B101(redeclare package Medium = Medium, V0 = 0.0001, crossArea = 0.01431355, height = 0.22, level_start = 0.01, nPorts = 1, nTopPorts = 1, portsData = {Modelica.Fluid.Vessels.BaseClasses.VesselPortsData(diameter = 0.011, height = 0.001, zeta_out = 0, zeta_in = 1)}, stiffCharacteristicForEmptyPort = false, energyDynamics = Modelica.Fluid.Types.Dynamics.FixedInitial, massDynamics = Modelica.Fluid.Types.Dynamics.FixedInitial, p_ambient(displayUnit = "Pa") = 1e5) annotation(
     Placement(transformation(origin = {-110, 0}, extent = {{-20, -20}, {20, 20}})));
-  Modelica.Fluid.Examples.AST_BatchPlant.BaseClasses.TankWith3InletOutletArraysWithEvaporatorCondensor distill(redeclare package Medium = Medium, height = 1.22, n_SidePorts = 1, V0 = 0.001, n_BottomPorts = 1, bottom_pipeArea = {0.0001}, top_pipeArea = {0.0001}, n_TopPorts = 1, min_level_for_heating = 0.0001, level_start = 0.0009, crossArea = 0.01431355, initType = Modelica.Fluid.Examples.AST_BatchPlant.BaseClasses.Init.InitialValues, side_pipeArea = {0.0001}, p_ambient = p_ambient, redeclare model HeatTransfer = Modelica.Fluid.Vessels.BaseClasses.HeatTransfer.IdealHeatTransfer(k = 4.9)) annotation(
+  SpillTanks.TankWithEvaporator distill(redeclare package Medium = Medium, height = 1.22, n_SidePorts = 1, V0 = 0.001, n_BottomPorts = 1, bottom_pipeArea = {0.0001}, top_pipeArea = {0.0001}, n_TopPorts = 1, min_level_for_heating = 0.0001, level_start = 0.0009, crossArea = 0.01431355, initType = Modelica.Fluid.Examples.AST_BatchPlant.BaseClasses.Init.InitialValues, side_pipeArea = {0.0001}, p_ambient = p_ambient, redeclare model HeatTransfer = Modelica.Fluid.Vessels.BaseClasses.HeatTransfer.IdealHeatTransfer(k = 4.9)) annotation(
     Placement(transformation(origin = {160, 100}, extent = {{-110, -60}, {-30, -20}})));
-  Modelica.Fluid.Examples.AST_BatchPlant.BaseClasses.TankWithTopPorts tank_B102(redeclare package Medium = Medium, V0 = 0.0001, nTopPorts = 1, height = 0.22, crossArea = 0.01431355, level_start = 0.01, nPorts = 1, portsData = {Modelica.Fluid.Vessels.BaseClasses.VesselPortsData(diameter = 0.011, height = 0)}, stiffCharacteristicForEmptyPort = false, use_HeatTransfer = true, T_start = 298, redeclare model HeatTransfer = Modelica.Fluid.Vessels.BaseClasses.HeatTransfer.IdealHeatTransfer(k = 4.9)) annotation(
+  SpillTanks.TankWithTopPorts tank_B102(redeclare package Medium = Medium, V0 = 0.0001, nTopPorts = 1, height = 0.22, crossArea = 0.01431355, level_start = 0.01, nPorts = 1, portsData = {Modelica.Fluid.Vessels.BaseClasses.VesselPortsData(diameter = 0.011, height = 0)}, stiffCharacteristicForEmptyPort = false, use_HeatTransfer = true, T_start = 298, redeclare model HeatTransfer = Modelica.Fluid.Vessels.BaseClasses.HeatTransfer.IdealHeatTransfer(k = 4.9)) annotation(
     Placement(transformation(origin = {130, 20}, extent = {{-80, -80}, {-40, -40}})));
-  Modelica.Fluid.Examples.AST_BatchPlant.BaseClasses.TankWithTopPorts tank_B103(redeclare package Medium = Medium, V0 = 0.0001, nTopPorts = 1, height = 0.22, crossArea = 0.01431355, level_start = 0.01, nPorts = 1, portsData = {Modelica.Fluid.Vessels.BaseClasses.VesselPortsData(diameter = 0.011, height = 0)}, stiffCharacteristicForEmptyPort = false, use_HeatTransfer = true, T_start = 298, redeclare model HeatTransfer = Modelica.Fluid.Vessels.BaseClasses.HeatTransfer.IdealHeatTransfer(k = 4.9)) annotation(
+  SpillTanks.TankWithTopPorts tank_B103(redeclare package Medium = Medium, V0 = 0.0001, nTopPorts = 1, height = 0.22, crossArea = 0.01431355, level_start = 0.01, nPorts = 1, portsData = {Modelica.Fluid.Vessels.BaseClasses.VesselPortsData(diameter = 0.011, height = 0)}, stiffCharacteristicForEmptyPort = false, use_HeatTransfer = true, T_start = 298, redeclare model HeatTransfer = Modelica.Fluid.Vessels.BaseClasses.HeatTransfer.IdealHeatTransfer(k = 4.9)) annotation(
     Placement(transformation(origin = {208, 20}, extent = {{-80, -80}, {-40, -40}}, rotation = -0)));
   // pipes
   Modelica.Fluid.Pipes.StaticPipe pipe0(redeclare package Medium = Medium, length = 1, diameter(displayUnit = "mm") = 0.01) annotation(
@@ -200,7 +200,14 @@ model distillModule
     Placement(transformation(origin = {50, 130}, extent = {{-10, -10}, {10, 10}})));
 
 
+  // Passive tank spills leave the plant independently of the injected leak fault.
+  Modelica.Fluid.Sources.FixedBoundary spill_sink(redeclare package Medium = Medium,
+    nPorts = 4, p = 1e5);
 equation
+  connect(tank_B101.spillPort, spill_sink.ports[1]);
+  connect(distill.spillPort, spill_sink.ports[2]);
+  connect(tank_B102.spillPort, spill_sink.ports[3]);
+  connect(tank_B103.spillPort, spill_sink.ports[4]);
   command_pump_P101_speed = if state_emptying_tank_B101.active then 150 else 0;
   command_valve_in_opening = if state_filling_tank_B101.active then 1.0 else closedValveOpening;
   command_valve_pump_P101_opening = if state_emptying_tank_B101.active then 1.0 else closedValveOpening;

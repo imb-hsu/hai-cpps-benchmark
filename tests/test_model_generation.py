@@ -4,7 +4,7 @@ import re
 from pathlib import Path
 
 from config import MODULE_SPECS, focused_fault_pair, load_benchmark_config
-from model_generation import generate_mos_text, generate_plant_text, write_run_files
+from model_generation import generate_mos_text, generate_plant_text, model_files_for_setup, write_run_files
 from validation import sha256_file
 
 
@@ -93,6 +93,14 @@ class ModelGenerationTests(unittest.TestCase):
         self.assertIn('loadModel(Modelica, {"4.0.0"});', mos)
         self.assertNotIn('noEventEmit', mos)
         self.assertIn('variableFilter=".*(', mos)
+
+    def test_shared_spill_models_are_loaded_once_before_process_modules(self):
+        files = model_files_for_setup(self.config["ds8"], CONFIG_PATH.parent)
+        spill = REPOSITORY / "models" / "SpillTanks.mo"
+        self.assertEqual(files[0], spill)
+        self.assertEqual(files.count(spill), 1)
+        mos = generate_mos_text(self.config["ds8"], files, Path("/tmp/Plant.mo"))
+        self.assertLess(mos.index("SpillTanks.mo"), mos.index("Mixer.mo"))
 
     def test_modelica_fault_defaults_are_false_and_clogging_is_not_a_fault(self):
         for module_type in ("mixer", "filter", "distill", "bottling"):

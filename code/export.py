@@ -71,6 +71,7 @@ _VERIFICATION_PATTERNS = (
     re.compile(r"^[^.]+\.pollution_value$"),
     re.compile(r"^[^.]+\.heater_[A-Za-z0-9_]+\.Q_flow$"),
     re.compile(r"^[^.]+\.cooler_[A-Za-z0-9_]+\.Q_flow$"),
+    re.compile(r"^[^.]+\.(?:tank_[A-Za-z0-9_]+|distill)\.spill_(?:volumeFlowRate|m_flow|mass)$"),
 )
 
 FORBIDDEN_SAFE_FRAGMENTS = (
@@ -84,6 +85,7 @@ FORBIDDEN_SAFE_FRAGMENTS = (
     ".var_",
     "pollution_value",
     "fault_window_active",
+    ".spill_",
 )
 
 IDENTIFIER_COLUMNS = ("scenario_id", "simulation_step", "simulation_time")

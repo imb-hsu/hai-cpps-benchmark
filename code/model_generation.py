@@ -25,6 +25,7 @@ RESULT_VARIABLE_FILTER = (
     "var_[A-Za-z0-9_]+|leaking_valve[.]m_flow|"
     "filter_[A-Za-z0-9_]+[.]opening|"
     "pollution_value|(heater|cooler)_[A-Za-z0-9_]+[.]Q_flow"
+    "|spill_(volumeFlowRate|m_flow|mass)"
     ")"
 )
 
@@ -123,6 +124,15 @@ def model_files_for_setup(
 
     used_types = {module["type"] for module in setup["model"]["modules"].values()}
     files = []
+    if used_types & {"mixer", "filter", "distill", "bottling"}:
+        spill_models = {
+            (config_dir / module["files"]).resolve().parent / "SpillTanks.mo"
+            for module in setup["model"]["modules"].values()
+            if module["type"] in {"mixer", "filter", "distill", "bottling"}
+        }
+        if len(spill_models) != 1:
+            raise ValueError("Built-in process modules must share one SpillTanks.mo")
+        files.extend(spill_models)
     for module_type, spec in MODULE_SPECS.items():
         if module_type not in used_types:
             continue
