@@ -69,7 +69,7 @@ model bottlingModule
   // pipes
   Modelica.Fluid.Pipes.StaticPipe pipe0(redeclare package Medium = Medium, length = 1, diameter(displayUnit = "mm") = 0.01) annotation(
     Placement(transformation(origin = {-90, -50}, extent = {{-10, -10}, {10, 10}}, rotation = -90)));
-  Modelica.Fluid.Pipes.StaticPipe pipe1(redeclare package Medium = Medium, diameter(displayUnit = "mm") = 0.01, length = 1) annotation(
+  Modelica.Fluid.Pipes.StaticPipe pipe1(redeclare package Medium = Medium, diameter(displayUnit = "mm") = 0.01, length = 1, allowFlowReversal = false) annotation(
     Placement(transformation(origin = {-10, -30}, extent = {{-10, 10}, {10, -10}}, rotation = 90)));
   Modelica.Fluid.Pipes.StaticPipe pipe2(redeclare package Medium = Medium, diameter(displayUnit = "mm") = 0.01, length = 1) annotation(
     Placement(transformation(origin = {90, -30}, extent = {{-10, -10}, {10, 10}}, rotation = -90)));

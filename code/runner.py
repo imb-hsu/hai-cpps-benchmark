@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import shutil
@@ -83,46 +84,34 @@ def _compiler_environment() -> Dict[str, str]:
     return environment
 
 
-def _nonlinear_termination(log_path: Path) -> bool:
-    """Recognize a failed algebraic solve, not earlier recoverable warnings."""
+def _nonlinear_failure_context(log_path: Path) -> Optional[str]:
+    """Name the algebraic system behind a terminated OpenModelica result."""
     if not log_path.is_file():
-        return False
+        return None
     tail = log_path.read_text(encoding="utf-8", errors="replace").splitlines()[-100:]
-    return (any("Simulation terminated by an assert" in line for line in tail)
-            and any("Solving non-linear system" in line and "failed" in line
-                    for line in tail))
-
-
-def _retry_with_kinsol(run_dir: Path, setup: Mapping[str, Any],
-                       raw_result: Path) -> Mapping[str, Any]:
-    """Retry a terminated simulation with a different nonlinear solver."""
-    first_log = run_dir / "processPlant.log"
-    if first_log.is_file():
-        shutil.copy2(first_log, run_dir / "processPlant.initial.log")
-    retry_result = run_dir / "processPlant_kinsol_res.csv"
-    stdout_path = run_dir / "kinsol.stdout.log"
-    stderr_path = run_dir / "kinsol.stderr.log"
-    completed = subprocess.run(
-        [str(run_dir / "processPlant"), "-nls=kinsol", f"-r={retry_result.name}"],
-        cwd=str(run_dir), env=_compiler_environment(), text=True,
-        capture_output=True, check=False,
-    )
-    stdout_path.write_text(completed.stdout, encoding="utf-8")
-    stderr_path.write_text(completed.stderr, encoding="utf-8")
-    if completed.returncode != 0 or not retry_result.is_file():
-        raise SimulationError(
-            f"KINSOL retry failed for {run_dir.name} (exit {completed.returncode}); "
-            f"inspect {stdout_path} and {stderr_path}"
-        )
-    try:
-        validation = validate_raw_result(retry_result, setup["sim_setup"])
-    except ValidationError as exc:
-        raise SimulationError(
-            f"KINSOL retry produced an incomplete result for {run_dir.name}: {exc}; "
-            f"inspect {stdout_path} and {run_dir / 'processPlant.log'}"
-        ) from exc
-    retry_result.replace(raw_result)
-    return validation
+    terminations = [index for index, line in enumerate(tail)
+                    if "Simulation terminated by an assert" in line]
+    if not terminations:
+        return None
+    end = terminations[-1]
+    failures = [re.search(r"Solving non-linear system (\d+) failed", line)
+                for line in tail[max(0, end - 15):end]]
+    failures = [match for match in failures if match]
+    if not failures:
+        return None
+    index = int(failures[-1].group(1))
+    context = f"OpenModelica terminated while solving nonlinear system {index}"
+    info_path = log_path.with_name("processPlant_info.json")
+    if info_path.is_file():
+        try:
+            equations = json.loads(info_path.read_text(encoding="utf-8"))["equations"]
+            equation = next(item for item in equations if item.get("eqIndex") == index)
+            variables = equation.get("defines", [])
+            if variables:
+                context += f" ({', '.join(variables)})"
+        except (OSError, ValueError, KeyError, StopIteration):
+            pass
+    return context
 
 
 def run_openmodelica(
@@ -188,20 +177,12 @@ def run_openmodelica(
         try:
             raw_validation = validate_raw_result(raw_result, setup["sim_setup"])
         except ValidationError as exc:
-            if _nonlinear_termination(run_dir / "processPlant.log"):
-                try:
-                    raw_validation = _retry_with_kinsol(run_dir, setup, raw_result)
-                except SimulationError as retry_exc:
-                    raise SimulationError(
-                        f"OpenModelica stopped during a nonlinear solve for "
-                        f"{scenario_id}: {exc}. {retry_exc}. Build: {run_dir}"
-                    ) from retry_exc
-            else:
-                raise SimulationError(
-                    "Incomplete/invalid OpenModelica result for {}: {}. Build: {}".format(
-                        scenario_id, exc, run_dir
-                    )
-                ) from exc
+            context = _nonlinear_failure_context(run_dir / "processPlant.log")
+            detail = f"{context}. " if context else ""
+            raise SimulationError(
+                f"Incomplete/invalid OpenModelica result for {scenario_id}: "
+                f"{detail}{exc}. Build: {run_dir}"
+            ) from exc
     finally:
         assert_hashes_unchanged(model_hashes, reusable_models)
 

@@ -18,7 +18,7 @@ MODEL_HASHES = {
     "Mixer.mo": "a61f6d39663b8e93fbe4d8a3d5eec5a245deb2148e15964dc6f8c23e49045aaf",
     "Filter.mo": "af507f93002de1143088fb0ddbc655f91ba22d36c91f69b311c26a82afbcfe30",
     "Distill.mo": "574da9129e214534421878a7d5a4c784f922fc6de9f37cc788ab1102cadf8089",
-    "Bottling.mo": "0be2147234ee01545cf3a40324b51da5c370f1a44ac3c5012583f8d22e43b964",
+    "Bottling.mo": "0202bf4b7cc5b0e478671dea15f90368ad6d53c61943de8aa9a0417249fbb94d",
 }
 MODELS = Path(__file__).resolve().parents[1] / "models"
 
