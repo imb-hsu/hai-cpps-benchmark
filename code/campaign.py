@@ -2,16 +2,19 @@
 
 Use ``--jobs`` for parallel workers and ``--dataset ds1`` for one dataset.
 Restart the same command after an interruption to verify completed recordings.
+Individual recording failures are logged while independent recordings continue.
 """
 
 from __future__ import annotations
 
 import argparse
 from collections import defaultdict, deque
+from datetime import datetime, timezone
 import fcntl
 import json
 import os
 from pathlib import Path
+import shutil
 import signal
 import subprocess
 import sys
@@ -20,7 +23,7 @@ from typing import Any
 from uuid import uuid4
 
 from campaign_check import check_campaign
-from config import ConfigError, load_benchmark_config
+from config import ConfigError, RunSpec, load_benchmark_config
 from campaign_plan import (
     coverage,
     plan_campaign,
@@ -60,6 +63,18 @@ def write_manifest(path: Path, manifest: dict[str, Any]) -> None:
     temporary.replace(path)
 
 
+def remove_successful_build(build: Path, run: RunSpec) -> None:
+    """Discard one completed recording's build without touching failed builds."""
+    run_dir = build / run.base_dataset / run.scenario_id
+    if run_dir.is_symlink():
+        raise OSError(f"Refusing symlinked build directory: {run_dir}")
+    if not run_dir.exists():
+        return
+    if not run_dir.is_dir() or not run_dir.resolve().is_relative_to(build.resolve()):
+        raise OSError(f"Refusing build directory outside build root: {run_dir}")
+    shutil.rmtree(run_dir)
+
+
 def prepare_shards(output: Path, manifests: dict[str, dict[str, Any]],
                    config: Path, topologies: tuple[str, ...]) -> None:
     for topology in topologies:
@@ -68,6 +83,8 @@ def prepare_shards(output: Path, manifests: dict[str, dict[str, Any]],
         snapshot_campaign(shard, config, manifest)
         manifest["status"] = "running"
         manifest.pop("error", None)
+        manifest["failed"] = {}
+        manifest["blocked"] = {}
         write_manifest(shard / "campaign.json", manifest)
         manifests[topology] = manifest
 
@@ -154,7 +171,9 @@ def finish_shards(output: Path, manifests: dict[str, dict[str, Any]],
         manifest = manifests[topology]
         entries = manifest["recordings"]
         if set(manifest["completed"]) != {entry["scenario_id"] for entry in entries}:
-            raise ValueError(f"Incomplete shard: {topology}")
+            manifest["status"] = "failed"
+            write_manifest(output / topology / "campaign.json", manifest)
+            continue
         gaps = {name: item for name, item in manifest["coverage"].items()
                 if item["missing_command_ranges"] or item["unvisited_controller_phases"]}
         by_group = defaultdict(list)
@@ -196,11 +215,55 @@ def run_pool(output: Path, build: Path, logs: Path, jobs: int,
         ready, dependents = work_queue(plans)
         active = {}
         completed = 0
+        handled = 0
+        failed = 0
+        blocked = 0
+        failure_path = logs / "failed_simulations.log"
+        with failure_path.open("a", encoding="utf-8") as failure_log:
+            failure_log.write(
+                f"\n{datetime.now(timezone.utc).isoformat()} Campaign started: "
+                f"{', '.join(topologies)}; output={output}\n"
+            )
+
+        def unsuccessful(plan, status, details):
+            nonlocal handled
+            run = plan[0]
+            manifest = manifests[run.base_dataset]
+            manifest[status][run.scenario_id] = details
+            manifest["completed"] = [scenario for scenario in manifest["completed"]
+                                     if scenario != run.scenario_id]
+            manifest["coverage"].pop(run.scenario_id, None)
+            write_manifest(output / run.base_dataset / "campaign.json", manifest)
+            with failure_path.open("a", encoding="utf-8") as failure_log:
+                failure_log.write(
+                    f"{datetime.now(timezone.utc).isoformat()} {status.upper()} "
+                    f"{run.scenario_id}: {json.dumps(details, sort_keys=True)}\n"
+                )
+            handled += 1
+            print(f"[{handled}/{len(plans)}] {run.scenario_id} {status}; "
+                  f"see {failure_path}", flush=True)
+
+        def fail(plan, details):
+            nonlocal failed, blocked
+            unsuccessful(plan, "failed", details)
+            failed += 1
+            for dependent in dependents.pop(plan[0].scenario_id, []):
+                unsuccessful(dependent, "blocked", {
+                    "reason": "Required healthy control failed",
+                    "paired_healthy": plan[0].scenario_id,
+                })
+                blocked += 1
+
         try:
             while ready or active:
                 while ready and len(active) < jobs:
                     plan = ready.popleft()
-                    process, log, log_path = start_worker(plan, output, build, logs, config)
+                    try:
+                        process, log, log_path = start_worker(plan, output, build, logs, config)
+                    except OSError as exc:
+                        fail(plan, {"error": f"Could not start worker: {exc}",
+                                    "log": str(logs / f"{plan[0].scenario_id}.log")})
+                        continue
                     active[process.pid] = (process, log, (plan, log_path))
                 finished = [(pid, item) for pid, item in active.items()
                             if item[0].poll() is not None]
@@ -212,28 +275,47 @@ def run_pool(output: Path, build: Path, logs: Path, jobs: int,
                     log.close()
                     run, _, _, paired = plan
                     if process.returncode != 0:
-                        manifest = manifests[run.base_dataset]
-                        manifest.update(status="failed", error=f"{run.scenario_id}: {log_path}")
-                        write_manifest(output / run.base_dataset / "campaign.json", manifest)
-                        raise RuntimeError(f"{run.scenario_id} failed; see {log_path}")
+                        fail(plan, {"exit_code": process.returncode, "log": str(log_path)})
+                        continue
                     manifest = manifests[run.base_dataset]
                     if paired is None:
-                        manifest["coverage"][run.scenario_id] = coverage(
-                            output / run.base_dataset / run.base_dataset / run.scenario_id,
-                            run,
-                        )
+                        try:
+                            manifest["coverage"][run.scenario_id] = coverage(
+                                output / run.base_dataset / run.base_dataset / run.scenario_id,
+                                run,
+                            )
+                        except (OSError, RuntimeError, ValueError) as exc:
+                            fail(plan, {"error": f"Coverage check failed: {exc}",
+                                        "log": str(log_path)})
+                            continue
+                    try:
+                        remove_successful_build(build, run)
+                    except OSError as exc:
+                        print(f"Could not remove successful build for {run.scenario_id}: {exc}",
+                              file=sys.stderr, flush=True)
+                    if paired is None:
                         for dependent in reversed(dependents.pop(run.scenario_id, [])):
                             ready.appendleft(dependent)
                     if run.scenario_id not in manifest["completed"]:
                         manifest["completed"].append(run.scenario_id)
                     write_manifest(output / run.base_dataset / "campaign.json", manifest)
                     completed += 1
-                    print(f"[{completed}/{len(plans)}] {run.scenario_id} finished; "
+                    handled += 1
+                    print(f"[{handled}/{len(plans)}] {run.scenario_id} finished; "
                           f"{len(active)} running, {len(ready)} ready", flush=True)
         except BaseException:
             stop_workers(active)
             raise
         finish_shards(output, manifests, topologies)
+        with failure_path.open("a", encoding="utf-8") as failure_log:
+            failure_log.write(
+                f"{datetime.now(timezone.utc).isoformat()} Campaign finished: "
+                f"{completed} completed, {failed} failed, {blocked} blocked\n"
+            )
+        if failed or blocked:
+            print(f"Campaign finished: {completed} completed, {failed} failed, "
+                  f"{blocked} blocked; see {failure_path}", flush=True)
+            return 1
         report = check_campaign(output, topologies=topologies)
         selection = "all" if topologies == TOPOLOGIES else topologies[0]
         report_path = logs / f"v2.2_{selection}_check.json"
