@@ -43,6 +43,20 @@ The supported anomaly classes depend on the module type. While some anomalies on
 
 - **Heater Lower Performance 75% / 50%:** The distillation heater operates at the corresponding fraction of its nominal heat input.
 
+Every tank in the four process modules, including the distillation evaporator,
+has a passive spill path to a separate atmospheric sink. Below the tank rim,
+spill flow is zero. Above the rim, a rectangular-weir law removes liquid with
+its enthalpy and composition, allowing a small hydraulic head above the nominal
+tank height instead of terminating on an overflow assertion. The effective spill
+width defaults to the circumference of a circular tank with the configured cross
+section, and the discharge coefficient is 0.6. Controller thresholds, valve ramps,
+and injected leak faults retain their existing definitions. Spill rates and
+cumulative spilled mass are recorded in the private verification audit.
+
+These models change campaign source hashes. To regenerate with spill paths, use
+fresh `--output` and `--build-root` directories; an older campaign cannot be resumed
+with the modified models.
+
 ## Benchmark Datasets
 
 The idea of HAI-CPPS is to offer a comprehensive benchmark for Machine Learning Algorithms for technical systems. HAI-CPPS is especially suited for algorithms from the domains of **anomaly detection, reconfiguration, and diagnosis**. Therefore HAI-CPPS provides ten different datasets that each are recorded from a different, increasingly complex instance of the CPPS. The setup allows you to evaluate and compare your algorithms systematically in the dimensions of CPPS complexity and problem complexity.
@@ -132,6 +146,18 @@ python code/campaign.py --jobs 4
 
 Set `--jobs` to the number of simulations your computer can run at once. Each worker has an isolated OpenModelica build directory. The launcher schedules healthy controls before their paired faults, writes logs under `build/v2.2/campaign/logs/`, and validates the completed campaign. Rerun the same command after an interruption to reuse complete recordings. Choose new `--output` and `--build-root` directories if you change the configuration or source after starting a campaign.
 
+After a recording passes its worker checks and healthy-run coverage check, the launcher removes its OpenModelica build directory. Failed recordings keep their build files for diagnosis; worker logs remain in the log directory.
+
+Individual simulation failures do not stop the campaign: other workers and queued
+recordings continue. `failed_simulations.log` in the log directory lists every
+failed scenario, its exit code or error, and the path to its detailed worker log.
+If a required healthy control fails, its paired fault recordings are marked
+`BLOCKED` in the same log and skipped for that attempt. The log retains the history
+of subsequent attempts, and each dataset's `campaign.json` records its current
+`failed` and `blocked` scenarios. A campaign with failures finishes with exit status
+1 and produces no release manifest. Rerun the same command with unchanged source
+and configuration to retry incomplete recordings and reuse complete recordings.
+
 The default result is `output/v2.2/`. For example, one recording is in `output/v2.2/ds1/ds1/ds1_001_healthy/`. Each recording contains continuous, discrete, and hybrid Parquet measurements, controller commands, fault and timing metadata, validation results, and provenance. `output/v2.2/release_manifest.json` summarizes a validated full campaign. Generated files stay outside the source directories and are ignored by Git.
 
 You can choose output locations explicitly:
@@ -169,6 +195,7 @@ For an existing topology or a built-in-only combination, use the same JSON forma
 ## Repository map
 
 - `models/`: validated Modelica modules used by the benchmark.
+- `models/SpillTanks.mo`: shared tank and evaporator models with conservative rim spills, adapted from MSL 4.0.0.
 - `code/benchmark_setup.json`: ten benchmark topologies and fault inventories.
 - `code/campaign.py`: parallel full or single-dataset v2.2 campaign.
 - `code/simulate.py`: one raw simulation for a user topology.
