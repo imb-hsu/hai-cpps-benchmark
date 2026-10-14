@@ -83,6 +83,48 @@ def _compiler_environment() -> Dict[str, str]:
     return environment
 
 
+def _nonlinear_termination(log_path: Path) -> bool:
+    """Recognize a failed algebraic solve, not earlier recoverable warnings."""
+    if not log_path.is_file():
+        return False
+    tail = log_path.read_text(encoding="utf-8", errors="replace").splitlines()[-100:]
+    return (any("Simulation terminated by an assert" in line for line in tail)
+            and any("Solving non-linear system" in line and "failed" in line
+                    for line in tail))
+
+
+def _retry_with_kinsol(run_dir: Path, setup: Mapping[str, Any],
+                       raw_result: Path) -> Mapping[str, Any]:
+    """Retry a terminated simulation with a different nonlinear solver."""
+    first_log = run_dir / "processPlant.log"
+    if first_log.is_file():
+        shutil.copy2(first_log, run_dir / "processPlant.initial.log")
+    retry_result = run_dir / "processPlant_kinsol_res.csv"
+    stdout_path = run_dir / "kinsol.stdout.log"
+    stderr_path = run_dir / "kinsol.stderr.log"
+    completed = subprocess.run(
+        [str(run_dir / "processPlant"), "-nls=kinsol", f"-r={retry_result.name}"],
+        cwd=str(run_dir), env=_compiler_environment(), text=True,
+        capture_output=True, check=False,
+    )
+    stdout_path.write_text(completed.stdout, encoding="utf-8")
+    stderr_path.write_text(completed.stderr, encoding="utf-8")
+    if completed.returncode != 0 or not retry_result.is_file():
+        raise SimulationError(
+            f"KINSOL retry failed for {run_dir.name} (exit {completed.returncode}); "
+            f"inspect {stdout_path} and {stderr_path}"
+        )
+    try:
+        validation = validate_raw_result(retry_result, setup["sim_setup"])
+    except ValidationError as exc:
+        raise SimulationError(
+            f"KINSOL retry produced an incomplete result for {run_dir.name}: {exc}; "
+            f"inspect {stdout_path} and {run_dir / 'processPlant.log'}"
+        ) from exc
+    retry_result.replace(raw_result)
+    return validation
+
+
 def run_openmodelica(
     setup: Mapping[str, Any],
     config_dir: Path,
@@ -146,11 +188,20 @@ def run_openmodelica(
         try:
             raw_validation = validate_raw_result(raw_result, setup["sim_setup"])
         except ValidationError as exc:
-            raise SimulationError(
-                "Incomplete/invalid OpenModelica result for {}: {}. Build: {}".format(
-                    scenario_id, exc, run_dir
-                )
-            ) from exc
+            if _nonlinear_termination(run_dir / "processPlant.log"):
+                try:
+                    raw_validation = _retry_with_kinsol(run_dir, setup, raw_result)
+                except SimulationError as retry_exc:
+                    raise SimulationError(
+                        f"OpenModelica stopped during a nonlinear solve for "
+                        f"{scenario_id}: {exc}. {retry_exc}. Build: {run_dir}"
+                    ) from retry_exc
+            else:
+                raise SimulationError(
+                    "Incomplete/invalid OpenModelica result for {}: {}. Build: {}".format(
+                        scenario_id, exc, run_dir
+                    )
+                ) from exc
     finally:
         assert_hashes_unchanged(model_hashes, reusable_models)
 
