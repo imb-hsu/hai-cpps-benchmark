@@ -61,8 +61,6 @@ RUN useradd --create-home --shell /bin/bash hai-cpps \
 USER hai-cpps
 ENV HOME=/home/hai-cpps
 WORKDIR /opt/hai-cpps
-VOLUME ["/work"]
-
 # Initialise the cached Modelica Standard Library for the non-root runtime
 # user. The generated plant explicitly requires Modelica 4.0.0.
 RUN printf 'loadModel(Modelica, {"4.0.0"});\ngetErrorString();\n' \
@@ -70,5 +68,5 @@ RUN printf 'loadModel(Modelica, {"4.0.0"});\ngetErrorString();\n' \
     && omc /tmp/load-modelica.mos \
     | grep --fixed-strings --line-regexp true
 
-ENTRYPOINT ["python", "code/campaign.py"]
-CMD ["--config", "code/benchmark_setup.json", "--output", "/work/output/v2.2-ramped", "--build-root", "/work/build/v2.2-ramped", "--jobs", "4"]
+ENTRYPOINT ["python", "code/docker_entrypoint.py"]
+CMD ["--jobs", "4"]
