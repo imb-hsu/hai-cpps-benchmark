@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 from collections import defaultdict, deque
 from datetime import datetime, timezone
+import errno
 import fcntl
 import json
 import os
@@ -61,6 +62,38 @@ def write_manifest(path: Path, manifest: dict[str, Any]) -> None:
     temporary = path.with_name(path.name + f".{uuid4().hex}.tmp")
     temporary.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     temporary.replace(path)
+
+
+def retain_raw_result(build: Path, output: Path, run: RunSpec) -> Path:
+    """Keep the full OpenModelica CSV with its completed recording."""
+    run_dir = build / run.base_dataset / run.scenario_id
+    raw_result = run_dir / "processPlant_res.csv"
+    recording_dir = output / run.base_dataset / run.base_dataset / run.scenario_id
+    retained_result = recording_dir / raw_result.name
+    if recording_dir.is_symlink() or not recording_dir.is_dir():
+        raise OSError(f"Missing or symlinked recording directory: {recording_dir}")
+    if retained_result.is_symlink():
+        raise OSError(f"Refusing symlinked raw result: {retained_result}")
+    if retained_result.exists():
+        if not retained_result.is_file():
+            raise OSError(f"Raw result destination is not a file: {retained_result}")
+        if raw_result.exists():
+            raise OSError(f"Refusing to overwrite existing raw result: {retained_result}")
+        return retained_result
+    if run_dir.is_symlink() or not raw_result.is_file() or raw_result.is_symlink():
+        raise OSError(f"Missing or symlinked raw result: {raw_result}")
+    try:
+        raw_result.replace(retained_result)
+    except OSError as exc:
+        if exc.errno != errno.EXDEV:
+            raise
+        temporary = retained_result.with_name(f".{retained_result.name}.{uuid4().hex}.tmp")
+        try:
+            shutil.copy2(raw_result, temporary)
+            temporary.replace(retained_result)
+        finally:
+            temporary.unlink(missing_ok=True)
+    return retained_result
 
 
 def remove_successful_build(build: Path, run: RunSpec) -> None:
@@ -288,6 +321,12 @@ def run_pool(output: Path, build: Path, logs: Path, jobs: int,
                             fail(plan, {"error": f"Coverage check failed: {exc}",
                                         "log": str(log_path)})
                             continue
+                    try:
+                        retain_raw_result(build, output, run)
+                    except OSError as exc:
+                        fail(plan, {"error": f"Could not retain raw simulation result: {exc}",
+                                    "log": str(log_path)})
+                        continue
                     try:
                         remove_successful_build(build, run)
                     except OSError as exc:
