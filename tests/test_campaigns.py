@@ -59,7 +59,7 @@ class CampaignTests(unittest.TestCase):
             })
 
     def _pool(self, root, failures=(), topologies=("ds1",),
-              start_failure=None, coverage_failure=None):
+              start_failure=None, coverage_failure=None, missing_raw=None):
         launched = []
 
         class Worker:
@@ -84,6 +84,10 @@ class CampaignTests(unittest.TestCase):
             build_dir = build / plan[0].base_dataset / scenario
             build_dir.mkdir(parents=True, exist_ok=True)
             (build_dir / "compiled-model").write_text("build artifact")
+            recording_dir = output / plan[0].base_dataset / plan[0].base_dataset / scenario
+            recording_dir.mkdir(parents=True, exist_ok=True)
+            if scenario != missing_raw and not (recording_dir / "processPlant_res.csv").exists():
+                (build_dir / "processPlant_res.csv").write_text("time,level\n0,1\n")
             log = log_path.open("a")
             log.write("simulated worker failure\n" if scenario in failures else "completed\n")
             return Worker(len(launched), int(scenario in failures)), log, log_path
@@ -123,6 +127,10 @@ class CampaignTests(unittest.TestCase):
             self.assertEqual(checks, 0)
             self.assertFalse((root / "results/ds1_release_manifest.json").exists())
             self.assertFalse((root / "build/ds1/ds1_002_healthy").exists())
+            self.assertEqual(
+                (root / "results/ds1/ds1/ds1_002_healthy/processPlant_res.csv").read_text(),
+                "time,level\n0,1\n",
+            )
             for scenario in failures:
                 self.assertIn(f"FAILED {scenario}:", failure_log)
                 self.assertIn(str(root / "logs" / f"{scenario}.log"), failure_log)
@@ -183,6 +191,18 @@ class CampaignTests(unittest.TestCase):
                 self.assertFalse((root / "build/ds1/ds1_001_healthy").exists())
                 if kind == "coverage_failure":
                     self.assertTrue((root / "build/ds1/ds1_016_healthy/compiled-model").is_file())
+
+    def test_missing_raw_result_fails_recording_and_keeps_build(self):
+        scenario = "ds1_016_healthy"
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            result, _, _ = self._pool(root, missing_raw=scenario)
+            manifest = json.loads((root / "results/ds1/campaign.json").read_text())
+            self.assertEqual(result, 1)
+            self.assertIn("Could not retain raw simulation result",
+                          manifest["failed"][scenario]["error"])
+            self.assertTrue((root / "build/ds1" / scenario / "compiled-model").is_file())
+            self.assertEqual(len(manifest["blocked"]), 12)
 
 
 if __name__ == "__main__":
