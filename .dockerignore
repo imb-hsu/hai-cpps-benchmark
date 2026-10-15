@@ -1,0 +1,8 @@
+.git/
+.temp/
+.venv/
+build/
+data/
+docker-work/
+output/
+**/__pycache__/
