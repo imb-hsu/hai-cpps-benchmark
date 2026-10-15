@@ -130,6 +130,22 @@ python -m pip install -r requirements.txt
 
 Activate the environment again with `source .venv/bin/activate` in each new shell.
 
+### Docker alternative
+
+Build the benchmark image and mount a host directory at `/work` so results remain available after the container exits:
+
+```bash
+docker build -t hai-cpps:v2.2 .
+mkdir -p docker-work
+docker run --rm \
+  --mount "type=bind,source=$PWD/docker-work,target=/work" \
+  hai-cpps:v2.2 --jobs 60
+```
+
+`--jobs 60` runs up to 60 recording workers concurrently in one container. Choose a number that fits the host's CPU, memory, and disk capacity. The output is stored on the host at `docker-work/output/v2.2/`, and build logs are at `docker-work/build/v2.2/logs/`. For example, a raw recording is `docker-work/output/v2.2/ds1/ds1/ds1_001_healthy/processPlant_res.csv`. Rerun the same image and command with the same host directory to resume an interrupted campaign.
+
+To choose a different result directory inside the mount, pass `--output /work/output/my-run` and `--build-root /work/build/my-run`. The image requires a writable mount at `/work` for campaign runs and checks that output, build, and log paths stay inside it. `--plan` works without a mount.
+
 ## 2. Run all benchmark datasets
 
 First inspect the work list without writing outputs:
@@ -146,7 +162,7 @@ python code/campaign.py --jobs 4
 
 Set `--jobs` to the number of simulations your computer can run at once. Each worker has an isolated OpenModelica build directory. The launcher schedules healthy controls before their paired faults, writes logs under `build/v2.2/campaign/logs/`, and validates the completed campaign. Rerun the same command after an interruption to reuse complete recordings. Choose new `--output` and `--build-root` directories if you change the configuration or source after starting a campaign.
 
-After a recording passes its worker checks and healthy-run coverage check, the launcher removes its OpenModelica build directory. Failed recordings keep their build files for diagnosis; worker logs remain in the log directory.
+After a recording passes its worker checks and healthy-run coverage check, the launcher moves its full OpenModelica result (`processPlant_res.csv`) into the recording's output directory, then removes the remaining build files. Failed recordings keep their build files for diagnosis; worker logs remain in the log directory.
 
 Individual simulation failures do not stop the campaign: other workers and queued
 recordings continue. `failed_simulations.log` in the log directory lists every
@@ -158,7 +174,7 @@ of subsequent attempts, and each dataset's `campaign.json` records its current
 1 and produces no release manifest. Rerun the same command with unchanged source
 and configuration to retry incomplete recordings and reuse complete recordings.
 
-The default result is `output/v2.2/`. For example, one recording is in `output/v2.2/ds1/ds1/ds1_001_healthy/`. Each recording contains continuous, discrete, and hybrid Parquet measurements, controller commands, fault and timing metadata, validation results, and provenance. `output/v2.2/release_manifest.json` summarizes a validated full campaign. Generated files stay outside the source directories and are ignored by Git.
+The default result is `output/v2.2/`. For example, one recording is in `output/v2.2/ds1/ds1/ds1_001_healthy/`. Each recording contains the raw `processPlant_res.csv`, continuous, discrete, and hybrid Parquet measurements, controller commands, fault and timing metadata, validation results, and provenance. The raw CSV includes simulator-internal variables; use the Parquet measurement views for benchmark features. `output/v2.2/release_manifest.json` summarizes a validated full campaign. Generated files stay outside the source directories and are ignored by Git.
 
 You can choose output locations explicitly:
 
