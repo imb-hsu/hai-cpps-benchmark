@@ -12,6 +12,20 @@ This repository generates the HAI-CPPS v2.2 simulation benchmark with OpenModeli
 
 You can find the documentation of HAI-CPPS [here](https://j-ehrhardt.github.io/hai-cpps-benchmark/)
 
+## Version history
+
+Since its beginning HAI-CPPS has lived through a constant evolution.
+To keep track of this, you can retrace its history here.
+The version branches record changes to the benchmark simulation and its datasets:
+
+| Version | Main changes |
+| --- | --- |
+| [v0.0 (BeRfiPl)](https://github.com/j-ehrhardt/hai-cpps-benchmark/tree/berfipl) | Precursor benchmark for diagnosis, reconfiguration, and planning, built from modular process plant simulations with mixing, filtering, distilling, and bottling modules and individual and combined faults. |
+| [v1.0](https://github.com/j-ehrhardt/hai-cpps-benchmark/tree/v1.0) | Introduced ten modular plant configurations and simulated healthy and anomalous data in discrete, continuous, hybrid, and state-inclusive views. |
+| [v2.0](https://github.com/j-ehrhardt/hai-cpps-benchmark/tree/v2.0) | Removed clogging anomaly because the available data could not support its detection or diagnosis. Standardized campaigns around one fault per recording, added configuration validation, and separated measurement views from simulator-internal oracle states, fault events, timing, and validation metadata. |
+| [v2.1](https://github.com/j-ehrhardt/hai-cpps-benchmark/tree/v2.1) | Added directly recorded nominal controller commands, explicit actuator channel roles, and a diagnosis loader that keeps permitted inputs separate from oracle data. Added a rerun workflow with independent healthy train, validation, calibration, and test recordings and healthy controls paired with faulty test runs. |
+| [v2.2](https://github.com/j-ehrhardt/hai-cpps-benchmark/tree/v2.2) | Extended recordings from 10,000 to 25,000 simulation steps and added persistent and temporary variants of 95 single-fault scenarios. The full campaign now has 160 healthy and 190 faulty recordings, with parallel, resumable generation and per-dataset manifests. Added custom topology simulation and passive tank spill paths to handle overflow. |
+
 
 # Overview
 
